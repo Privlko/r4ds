@@ -1,0 +1,73 @@
+library(tidyverse)
+library(modelr)
+options(na.action = na.warn)
+
+library(nycflights13)
+library(lubridate)
+library(hexbin)
+
+ggplot(diamonds, aes(cut,price)) +geom_boxplot()
+ggplot(diamonds, aes(color, price)) +geom_boxplot()
+ggplot(diamonds, aes(clarity, price)) +geom_boxplot()
+
+
+ggplot(diamonds, aes(carat, price)) +
+  geom_hex(bins=30)
+
+
+# clean the data ----------------------------------------------------------
+
+d <- diamonds %>%
+  filter(carat <= 2.5) %>%
+  mutate(lprice = log2(price), lcarat = log2(carat))
+
+d
+
+ggplot(d, aes(lcarat, lprice))+
+  geom_hex(bins=30)
+
+
+# model the data ----------------------------------------------------------
+
+
+
+mod1 <- lm(lprice ~ lcarat, data=d)
+
+mod1
+
+grid <- d %>%
+  data_grid(carat) %>%
+  mutate(lcarat = log2(carat)) %>%
+  add_predictions(mod1, "lprice") %>%
+  mutate(price = 2^lprice)
+
+
+grid
+
+ggplot(d, aes(carat, price))+
+  geom_hex(bins=30) +
+  geom_line(data=grid, colour="red",
+            size=3)
+
+d <- d %>%
+  add_residuals(mod1, "lresid69")
+
+d
+ggplot(d, aes(lcarat,lresid69))+
+  geom_hex(bins=30)
+
+ggplot(d, aes(cut, lresid69)) + geom_boxplot()
+ggplot(d, aes(color, lresid69)) + geom_boxplot()
+ggplot(d, aes(clarity, lresid69)) + geom_boxplot()
+
+
+mod2 <- lm(lprice ~lcarat + color +cut + clarity,
+           data=d)
+mod2
+
+grid <- d %>% 
+  add_predictions(mod2)
+
+grid
+
+ggplot(grid,aes(cut, pred))
